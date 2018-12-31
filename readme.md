@@ -17,3 +17,7 @@ In [maps]/mapLoader/config.js, you can add or remove map in **map** array
 You only need to start the mapLoader. So, just add this in the server.cfg:
 `start mapLoader`
 
+# Planned
+
+-Add AI Possibilities
+-Add a wiki for maps
