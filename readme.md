@@ -22,3 +22,4 @@ You only need to start the mapLoader. So, just add this in the server.cfg:
 
  - Add AI Possibilities
  - Add a wiki for maps
+ - Spectator
