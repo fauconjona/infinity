@@ -13,10 +13,17 @@ on('onClientMapStart', () => {
 });
 
 on('playerSpawned', function() {
+    stopSpectate();
     if (firstSpawn) {
         TriggerServerEvent('infinity:playerConnected');
         gameState = "lobby";
         firstSpawn = false;
+        if (gameConfig.time != null) {
+            changeTime(gameConfig.time);
+        }
+        if (gameConfig.weather != null) {
+            changeWeather(gameConfig.weather);
+        }
     } else {
         if (currentClass != null) {
             changeClass(currentClass);
@@ -105,19 +112,36 @@ on("getMapDirectives", function(add) {
         }
     },(state, data)=>{
         rules = [];
+        gameConfig = {
+            disableWanted: false,
+            respawn: null,
+            autoFill: false,
+            spectator: false,
+            weather: null,
+            time: null
+        };
     });
 
     add('setGameConfig', function(state, data){
         return function (options) {
             if (data == "autoFill" && options.value) {
                 gameConfig.autoFill = options.value;
+            } else if (data == "spectator" && options.value) {
+                gameConfig.spectator = options.value;
+            } else if (data == "weather" && options.value) {
+                gameConfig.weather = options.value;
+            } else if (data == "time" && options.value) {
+                gameConfig.time = options.value;
             }
         }
     },(state, data)=>{
         gameConfig = {
             disableWanted: false,
             respawn: null,
-            autoFill: false
+            autoFill: false,
+            spectator: false,
+            weather: null,
+            time: null
         };
     });
 });
@@ -211,14 +235,33 @@ on('infinity:spawnToHeadQuarter', function(pos) {
     displayReadyInstruction("To be ready press ");
 
     gameState = "preparing";
+
+    if (gameConfig.time != null) {
+        changeTime(gameConfig.time);
+    }
+    
+    if (gameConfig.weather != null) {
+        changeWeather(gameConfig.weather);
+    }
 });
 
 RegisterNetEvent('infinity:startParty');
 on('infinity:startParty', function(pos) {
 
+    if (gameState == "lobby") {
+        for (var i = 0; i < 32; i++) {
+            if(NetworkIsPlayerActive(i)) {
+                spectatePlayer(i);
+                break;
+            }
+        }
+        return;
+    }
 
     messageScaleform.ready = false;
     messageScaleform.scaleform = null;
+
+    gameState = "countdown";
 
     if (pos.radius > 1) {
         pos.x = pos.x + (Math.random() * 2 * pos.radius) - pos.radius;
@@ -237,7 +280,19 @@ on('infinity:startParty', function(pos) {
     exports.spawnmanager.removeSpawnPoint(hqPos.idx);
     partyPos.idx = exports.spawnmanager.addSpawnPoint(partyPos);
 
-    gameState = "playing";
+    if (gameConfig.time != null) {
+        changeTime(gameConfig.time);
+    }
+
+    if (gameConfig.weather != null) {
+        changeWeather(gameConfig.weather);
+    }
+
+    displayCountdown(3);
+
+    setTimeout(function() {
+        gameState = "playing";
+    }, 3000);
 });
 
 RegisterNetEvent('infinity:createObject');
@@ -250,10 +305,10 @@ on('infinity:createObject', function(model, pos, isNetwork, objectiveIdentifier)
         var objective = objectives[objectiveIdentifier];
         objective.objectId = obj;
         objectives[objectiveIdentifier] = objective;
-        TriggerServerEvent('infinity:objectiveCreated', objectiveIdentifier, obj);
+        TriggerServerEvent('infinity:objectiveCreated', objectiveIdentifier, ObjToNet(obj));
     }
 
-    TriggerServerEvent('infinity:entityCreated', obj);
+    TriggerServerEvent('infinity:entityCreated', ObjToNet(obj));
 });
 
 RegisterNetEvent('infinity:createVehicle');
@@ -280,17 +335,67 @@ on('infinity:createVehicle', async function(model, pos, isNetwork, objectiveIden
                 SetNetworkIdSyncToPlayer(vehId, i, false);
             }
         }
+
         if (objectiveIdentifier != null) {
-            TriggerServerEvent('infinity:objectiveCreated', objectiveIdentifier, veh);
+            TriggerServerEvent('infinity:objectiveCreated', objectiveIdentifier, VehToNet(veh));
         }
 
-        TriggerServerEvent('infinity:entityCreated', veh);
+        TriggerServerEvent('infinity:entityCreated', VehToNet(veh));
+    }
+});
+
+RegisterNetEvent('infinity:createPed');
+on('infinity:createPed', async function(model, pos, isNetwork, objectiveIdentifier) {
+    var pedHash = GetHashKey(model);
+
+    if (IsModelValid(pedHash)) {
+        RequestModel(pedHash);
+        while (!HasModelLoaded(pedHash)) {
+            await Utils.delay(1);
+        }
+
+        var ped = CreatePed(2, pedHash, pos.x, pos.y, pos.z, pos.heading, isNetwork, false);
+        var pedId = NetworkGetNetworkIdFromEntity(ped);
+
+		SetEntityAsMissionEntity(ped, true, false);
+        FreezeEntityPosition(ped, true);
+
+        SetModelAsNoLongerNeeded(pedHash);
+
+        for (var i = 0; i < 32; i++) {
+            if (NetworkIsPlayerActive(i) && GetPlayerPed(i) != GetPlayerPed(-1)) {
+                SetNetworkIdSyncToPlayer(pedId, i, false);
+            }
+        }
+
+        if (objectiveIdentifier != null) {
+            TriggerServerEvent('infinity:objectiveCreated', objectiveIdentifier, PedToNet(ped));
+        }
+
+        TriggerServerEvent('infinity:entityCreated', PedToNet(ped));
+
     }
 });
 
 RegisterNetEvent('infinity:deleteObject');
 on('infinity:deleteObject', function(objectId) {
-    DeleteObject(objectId);
+    if (NetworkHasControlOfNetworkId(objectId)) {
+        DeleteObject(NetToObj(objectId));
+    }
+});
+
+RegisterNetEvent('infinity:deleteVehicle');
+on('infinity:deleteVehicle', function(objectId) {
+    if (NetworkHasControlOfNetworkId(objectId)) {
+        DeleteVehicle(NetToVeh(objectId));
+    }
+});
+
+RegisterNetEvent('infinity:deletePed');
+on('infinity:deletePed', function(objectId) {
+    if (NetworkHasControlOfNetworkId(objectId)) {
+        DeletePed(NetToPed(objectId));
+    }
 });
 
 RegisterNetEvent('infinity:newObjective');
@@ -300,7 +405,7 @@ on('infinity:newObjective', function(objective) {
     if (objective.showBlip && (objective.team == null || objective.team == currentTeam)) {
         if (objective.type == "object" || objective.type == "area") {
             TriggerEvent('infinity:createObjectiveBlip', objective.pos, objective.identifier);
-        } else if (objective.type == "vehicle" && objective.objectId != null) {
+        } else if ((objective.type == "vehicle" || objective.type == "ped") && objective.objectId != null) {
             TriggerEvent('infinity:createVehicleBlip', objective.objectId, objective.identifier);
         }
     }
@@ -311,8 +416,8 @@ on('infinity:updateObjective', function(objective) {
     objectives[objective.identifier] = objective;
     var blipInfos = objectiveBlips[objective.identifier];
 
-    if (objective.showBlip && blipInfos == null && (objective.team == null || objective.team == currentTeam)) {
-        if (objective.type == "vehicle") {
+    if (objective.showBlip && (blipInfos == null || !DoesBlipExist(blipInfos.blip)) && (objective.team == null || objective.team == currentTeam)) {
+        if (objective.type == "vehicle" || objective.type == "ped") {
             TriggerEvent('infinity:createVehicleBlip', objective.objectId, objective.identifier);
         } else {
             TriggerEvent('infinity:createObjectiveBlip', objective.pos, objective.identifier);
@@ -344,7 +449,7 @@ on('infinity:createObjectiveBlip', function(pos, objective) {
 RegisterNetEvent('infinity:createVehicleBlip');
 on('infinity:createVehicleBlip', function(veh, objective) {
     var blipInfos = objectiveBlips[objective];
-    var blip = AddBlipForEntity(veh);
+    var blip = AddBlipForEntity(NetToEnt(veh));
 
     SetBlipRoute(blip, true);
 
@@ -434,12 +539,14 @@ on('infinity:changeClass', function(classIdentifier) {
 
 RegisterNetEvent('infinity:checkAlive');
 on('infinity:checkAlive', function(objectId, objectiveIdentifier) {
-    TriggerServerEvent('infinity:isDead', objectId, IsEntityDead(objectId) == 1, objectiveIdentifier);
+    TriggerServerEvent('infinity:isDead', objectId, IsEntityDead(NetToEnt(objectId)) == 1, DoesEntityExist(NetToEnt(objectId)), objectiveIdentifier);
 });
 
 RegisterNetEvent('infinity:deleteEntity');
 on('infinity:deleteEntity', function(objectId) {
-    DeleteEntity(objectId);
+    if (NetworkHasControlOfNetworkId(objectId)) {
+        DeleteEntity(NetToEnt(objectId));
+    }
 });
 
 RegisterNetEvent('infinity:displayMessage');
@@ -453,4 +560,33 @@ on('infinity:displayMessage', function(text, time) {
 RegisterNetEvent('infinity:restartParty');
 on('infinity:restartParty', function() {
     resetInfinity()
+});
+
+RegisterNetEvent('infinity:entityFreeze');
+on('infinity:entityFreeze', function(objectId, freeze) {
+    if (NetworkHasControlOfNetworkId(objectId)) {
+        FreezeEntityPosition(NetToEnt(objectId), freeze);
+    }
+});
+
+RegisterNetEvent('infinity:taskGoTo');
+on('infinity:taskGoTo', function(objectId, pos) {
+    if (NetworkHasControlOfNetworkId(objectId) && !GetIsTaskActive(NetToPed(objectId), 224)) {
+        TaskGoToCoordAnyMeans(NetToPed(objectId), pos.x, pos.y, pos.z, 5.0, false, false, 786603, 0xbf800000);
+    }
+});
+
+RegisterNetEvent('infinity:startSpectating');
+on('infinity:startSpectating', function() {
+    for (var i = 0; i < 32; i++) {
+        if(NetworkIsPlayerActive(i)) {
+            spectatePlayer(i);
+            break;
+        }
+    }
+});
+
+RegisterNetEvent('infinity:stopSpectating');
+on('infinity:stopSpectating', function() {
+    stopSpectate();
 });

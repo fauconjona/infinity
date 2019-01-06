@@ -70,6 +70,54 @@ async function displayWinMessage(title, text, duration) {
     messageScaleform.scaleform = null;
 }
 
+async function displayCountdown(timer) {
+    var scaleform = RequestScaleformMovie('countdown');
+
+    while (!HasScaleformMovieLoaded(scaleform)) {
+        await Utils.delay(0);
+    }
+
+    for (var i = timer; i > 0; i--) {
+        BeginScaleformMovieMethod(scaleform, "SET_MESSAGE");
+        PushScaleformMovieMethodParameterString(i.toString());
+        PushScaleformMovieMethodParameterInt(255);
+        PushScaleformMovieMethodParameterInt(165);
+        PushScaleformMovieMethodParameterInt(0);
+        PushScaleformMovieMethodParameterBool(true);
+        EndScaleformMovieMethod();
+        PlaySound(-1, "3_2_1", "HUD_MINI_GAME_SOUNDSET", 0, 0, 1);
+        messageScaleform.scaleform = scaleform;
+        messageScaleform.ready = true;
+        await Utils.delay(1000);
+    }
+
+    BeginScaleformMovieMethod(scaleform, "SET_MESSAGE");
+    PushScaleformMovieMethodParameterString("Go");
+    PushScaleformMovieMethodParameterInt(255);
+    PushScaleformMovieMethodParameterInt(255);
+    PushScaleformMovieMethodParameterInt(255);
+    PushScaleformMovieMethodParameterBool(true);
+    EndScaleformMovieMethod();
+    PlaySound(-1, "3_2_1", "HUD_MINI_GAME_SOUNDSET", 1, 0, 1);
+    messageScaleform.scaleform = scaleform;
+    messageScaleform.ready = true;
+    await Utils.delay(1000);
+
+    messageScaleform.ready = false;
+    messageScaleform.scaleform = null;
+}
+
+async function displaySpectatorOverlay() {
+    var scaleform = RequestScaleformMovie('mp_spectator_overlay');
+
+    while (!HasScaleformMovieLoaded(scaleform)) {
+        await Utils.delay(0);
+    }
+
+    messageScaleform.scaleform = scaleform;
+    messageScaleform.ready = true;
+}
+
 function scoreToString(score) {
     return score + " pts";
 }

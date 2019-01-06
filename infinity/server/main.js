@@ -17,7 +17,6 @@ var gameConfig = {
     minPlayerReady: 1,
     forceStart: 60000,
     gameStartDelay: 10000,
-    canJoinDuringGame: true,
     noTeam: false
 };
 
@@ -35,7 +34,6 @@ function resetInfinity() {
         minPlayerReady: 1,
         forceStart: 60000,
         gameStartDelay: 10000,
-        canJoinDuringGame: true,
         noTeam: false
     };
 }
@@ -74,7 +72,7 @@ function addEvent(type, target, options, data) {
         return;
 
     events.push(newEvent);
-    
+
     return newEvent;
 }
 
@@ -125,9 +123,12 @@ function startParty(ms) {
 function teamWin(teamIdentifier) {
     gameState = "end";
 
+    console.log(teamIdentifier);
+    console.log(teams[teamIdentifier]);
+    console.log(players[teamIdentifier]);
+
     if (teams[teamIdentifier] != null) {
         var team = teams[teamIdentifier];
-        var host = GetHostId();
 
         for (var identifier in players) {
             var player = players[identifier];
@@ -140,7 +141,6 @@ function teamWin(teamIdentifier) {
         }
     } else if (players[teamIdentifier] != null) {
         var winner = players[teamIdentifier];
-        var host = GetHostId();
 
         for (var identifier in players) {
             var player = players[identifier];
@@ -154,7 +154,7 @@ function teamWin(teamIdentifier) {
     }
 
     for (var i in missionEntities) {
-        TriggerClientEvent('infinity:deleteEntity', host, missionEntities[i]);
+        TriggerClientEvent('infinity:deleteEntity', -1, missionEntities[i]);
     }
 
     setTimeout(() => {
@@ -186,14 +186,12 @@ function teamLose(teamIdentifier) {
 function equality() {
     gameState = "end";
 
-    var host = GetHostId();
-
     for (var identifier in players) {
         TriggerClientEvent('infinity:winMessage', players[identifier].identifier, "~r~FAILED", "Equality", 10000);
     }
 
     for (var i in missionEntities) {
-        TriggerClientEvent('infinity:deleteEntity', host, missionEntities[i]);
+        TriggerClientEvent('infinity:deleteEntity', -1, missionEntities[i]);
     }
 
     setTimeout(() => {
@@ -268,8 +266,9 @@ function canStartParty() {
 
     for (var identifier in teams) {
         var team = teams[identifier];
+        var nbPlayers = players.filter(p => (p != null && p.team == team.identifier)).length
 
-        if (team.nbPlayers < team.minPlayer) {
+        if (nbPlayers < team.minPlayer) {
             canStart = false;
             break;
         }
@@ -313,7 +312,7 @@ setTick(() => {
             } else if (isEquality) {
                 equality();
             }
-        } else if(false) {
+        } else {
             var playerWinners = [];
             var isEquality = true;
 
@@ -351,7 +350,10 @@ setTick(() => {
     }
 
     if (s_players.length == 0 && gameState != "lobby") {
-        TriggerEvent("mapLoader:reloadMap");
+        resetInfinity();
+        setTimeout(() => {
+            TriggerEvent("mapLoader:reloadMap");
+        }, 500);
     }
 });
 
@@ -360,18 +362,40 @@ RegisterCommand('startParty', function(source, args, raw) {
 }, true);
 
 RegisterCommand('restartParty', function(source, args, raw) {
-    var host = GetHostId();
 
     for (var i in missionEntities) {
-        TriggerClientEvent('infinity:deleteEntity', host, missionEntities[i]);
+        TriggerClientEvent('infinity:deleteEntity', -1, missionEntities[i]);
     }
 
     setTimeout(() => {
         resetInfinity();
         TriggerClientEvent("infinity:restartParty", -1);
-    }, 9000);
+    }, 900);
 
     setTimeout(() => {
         TriggerEvent("mapLoader:loadNewMap");
     }, 1000);
+}, true);
+
+RegisterCommand('startSpectate', function(source, args, raw) {
+    TriggerClientEvent('infinity:startSpectating', source);
+}, true);
+
+RegisterCommand('stopSpectate', function(source, args, raw) {
+    TriggerClientEvent('infinity:stopSpectating', source);
+}, true);
+
+RegisterCommand('deleteObjectiveObject', function(source, args, raw) {
+    if (args.length == 0) {
+        console.log("Error: need an objective identifier");
+        return;
+    }
+
+    var objective = objectives[args[0]];
+
+    if (objective != null) {
+        TriggerClientEvent('infinity:deleteEntity', -1, objective.objectId);
+    } else {
+        console.log("Error: invalid identifier");
+    }
 }, true);

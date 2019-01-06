@@ -9,7 +9,7 @@ on("getMapDirectives", function(add) {
     add('addTeam', function(state, data){
         return function (teamInfo) {
             if (teamInfo.name) {
-                addTeam(data, teamInfo.name, teamInfo.minPlayer != null ? teamInfo.minPlayer : 0, teamInfo.maxPlayer != null ? teamInfo.maxPlayer : 0);
+                addTeam(data, teamInfo.name, teamInfo.minPlayer != null ? teamInfo.minPlayer : 1, teamInfo.maxPlayer != null ? teamInfo.maxPlayer : 0);
             } else {
                 Utils.error("'addTeam' error: missing name");
             }
@@ -176,8 +176,6 @@ on("getMapDirectives", function(add) {
                 gameConfig.forceStart = options.value * 1000;
             } else if (data == "gameStartDelay" && options.value) {
                 gameConfig.gameStartDelay = options.value * 1000;
-            } else if (data == "canJoinDuringGame" && options.value) {
-                gameConfig.canJoinDuringGame = options.value;
             } else if (data == "noTeam" && options.value) {
                 gameConfig.noTeam = options.value;
             }
@@ -188,18 +186,9 @@ on("getMapDirectives", function(add) {
             minPlayerReady: 1,
             forceStart: 60000,
             gameStartDelay: 10000,
-            canJoinDuringGame: true,
             noTeam: false
         };
     });
-});
-
-on('playerConnecting', function(playerName, setKickReason, deferrals){
-    deferrals.defer();
-    if (gameState != "lobby" && !gameConfig.canJoinDuringGame) {
-        deferrals.done("You can't join during the game");
-    }
-    deferrals.done();
 });
 
 on('playerDropped', function(reason){
@@ -223,7 +212,13 @@ onNet('infinity:playerConnected', function(){
             nbPlayers: players.filter(p => (p != null && p.team == i)).length
         });
     }
-    emitNet('infinity:teamsReceived', identifier, teamsLite);
+
+    if (gameState != "lobby") {
+        emitNet('infinity:startSpectating', identifier);
+    } else {
+        emitNet('infinity:teamsReceived', identifier, teamsLite);
+    }
+
 });
 
 RegisterNetEvent('baseevents:onPlayerKilled');
@@ -380,10 +375,12 @@ onNet('infinity:playerExitArea', function(objective){
 });
 
 RegisterNetEvent('infinity:isDead');
-onNet('infinity:isDead', function(objectId, dead, identifier){
+onNet('infinity:isDead', function(objectId, dead, exist, identifier){
     var objective = objectives[identifier];
 
-    if (objective != null && dead) {
+    if (!exist) {
+        objective.create(true);
+    } else if (objective != null && dead) {
         objective.destroy = true;
         var destroyEvents = events.filter(e => e.on == 'destroy' && e.type == "objective" && e.data == objective.identifier);
         for (var i = 0; i < destroyEvents.length; i++) {
@@ -395,4 +392,14 @@ onNet('infinity:isDead', function(objectId, dead, identifier){
 RegisterNetEvent('infinity:entityCreated');
 onNet('infinity:entityCreated', function(objectId){
     missionEntities.push(objectId);
+});
+
+RegisterNetEvent('infinity:entityFreeze');
+onNet('infinity:entityFreeze', function(objectId, freeze){
+    TriggerClientEvent('infinity:entityFreeze', -1, objectId, freeze);
+});
+
+RegisterNetEvent('infinity:taskGoTo');
+onNet('infinity:taskGoTo', function(objectId, pos){
+    TriggerClientEvent('infinity:taskGoTo', -1, objectId, pos);
 });

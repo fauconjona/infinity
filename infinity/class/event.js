@@ -48,14 +48,14 @@ class Event {
     triggered(player) {
         switch (this.trigger) {
             case 'win':
-                if (player != null) {
+                if (player != null && (this.target == "player" || gameConfig.noTeam)) {
                     teamWin(player.identifier);
                 } else {
                     teamWin(this.target);
                 }
                 break;
             case 'lose':
-                if (player != null) {
+                if (player != null && (this.target == "player" || gameConfig.noTeam)) {
                     teamLose(player.identifier);
                 } else {
                     teamLose(this.target);

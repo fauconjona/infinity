@@ -75,6 +75,10 @@ class Objective {
 
         var host = GetHostId();
 
+        if (players[host] == null) {
+            var host = Utils.selectRandom(players).identifier;
+        }
+
         TriggerClientEvent('infinity:newObjective', -1, this);
 
         switch (this.type) {
@@ -84,6 +88,9 @@ class Objective {
             case "vehicle":
                 TriggerClientEvent('infinity:createVehicle', host, this.model, this.pos, true, this.identifier);
                 break;
+            case "ped":
+                TriggerClientEvent('infinity:createPed', host, this.model, this.pos, true, this.identifier);
+                break;
             default:
 
         }
@@ -92,7 +99,7 @@ class Objective {
             this.holding();
         }
 
-        if (this.type == "vehicle") {
+        if (this.type == "vehicle" || this.type == "ped") {
             this.checkAlive();
         }
 
@@ -100,12 +107,12 @@ class Objective {
 
     clear() {
 
-        var host = GetHostId();
-
         switch (this.type) {
             case "vehicle":
+                TriggerClientEvent('infinity:deleteVehicle', -1, this.objectId);
+                break;
             case "object":
-                TriggerClientEvent('infinity:deleteObject', host, this.objectId);
+                TriggerClientEvent('infinity:deleteObject', -1, this.objectId);
                 break;
             default:
 
@@ -120,12 +127,14 @@ class Objective {
             this.completeBy(player);
         }
 
-        var host = GetHostId();
-
         this.collected = true;
         this.ownerId = player.identifier;
-        if (this.type != "vehicle") {
+        if (this.type != "vehicle" && this.type != "ped") {
             this.showBlip = false;
+        }
+
+        if (this.type == "ped") {
+            TriggerClientEvent('infinity:entityFreeze', -1, this.objectId, false);
         }
 
         if (this.destinations.length == 0) {
@@ -134,7 +143,7 @@ class Objective {
 
         switch (this.type) {
             case "object":
-                TriggerClientEvent('infinity:deleteObject', host, this.objectId);
+                TriggerClientEvent('infinity:deleteObject', -1, this.objectId);
                 break;
             default:
 
@@ -160,8 +169,9 @@ class Objective {
         var completeEvents = events.filter(e => e.on == 'complete' && e.type == "objective" && e.data == this.identifier && (e.target == player.team || e.target == 'any'));
 
         if (this.type == "vehicle") {
-            var host = GetHostId();
-            TriggerClientEvent('infinity:deleteObject', host, this.objectId);
+            TriggerClientEvent('infinity:deleteVehicle', -1, this.objectId);
+        } else if (this.type == "ped") {
+            TriggerClientEvent('infinity:deletePed', -1, this.objectId);
         }
 
         for (var i = 0; i < completeEvents.length; i++) {
@@ -191,6 +201,8 @@ class Objective {
             this.create(false);
         } else if (this.type == "vehicle") {
             TriggerClientEvent('infinity:newObjective', -1, this);
+        } else if (this.type == "ped") {
+            TriggerClientEvent('infinity:entityFreeze', -1, this.objectId, true);
         }
     }
 

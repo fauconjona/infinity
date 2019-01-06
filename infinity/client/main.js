@@ -27,12 +27,19 @@ var globalScore = [];
 var gameConfig = {
     disableWanted: false,
     respawn: null,
-    autoFill: false
+    autoFill: false,
+    spectator: false,
+    weather: null,
+    time: null
 };
 
 var respawnButtonEnabled = false;
+var spectatorButtonEnabled = false;
+var spectatingIdentifier = null;
 
 function resetInfinity() {
+
+    stopSpectate();
 
     for (var id in objectiveBlips) {
         TriggerEvent('infinity:deleteObjectiveBlip', id);
@@ -67,12 +74,15 @@ function resetInfinity() {
     gameConfig = {
         disableWanted: false,
         respawn: null,
-        autoFill: false
+        autoFill: false,
+        spectator: false,
+        weather: null,
+        time: null
     };
 
     respawnButtonEnabled = false;
-
-
+    spectatorButtonEnabled = false;
+    spectatingIdentifier = null;
 }
 
 async function loadLobby() {
@@ -229,6 +239,9 @@ function playerDead() {
                 exports.spawnmanager.spawnPlayer();
             }
         }
+    } else if (gameConfig.spectator) {
+        displayReadyInstruction("Spectating ");
+        spectatorButtonEnabled = true;
     }
 }
 
@@ -254,6 +267,76 @@ async function startCollecting(objective) {
     objectives[objective.identifier] = objective;
     objectiveCollecting = null;
     TriggerServerEvent('infinity:objectiveCollected', objective.identifier);
+}
+
+async function spectatePlayer(identifier) {
+    closeMenu();
+    if (spectatingIdentifier == null || spectatingIdentifier != identifier) {
+		if(!IsScreenFadedOut() && !IsScreenFadingOut()) {
+			DoScreenFadeOut(1000);
+			while (!IsScreenFadedOut()) {
+				await Utils.delay(0);
+			}
+
+			var target = GetPlayerPed(identifier);
+
+			var [targetX, targetY, targetZ] = GetEntityCoords(target, false);
+
+			RequestCollisionAtCoord(targetX, targetY, targetZ);
+			NetworkSetInSpectatorMode(true, target);
+
+			if(IsScreenFadedOut()) {
+				DoScreenFadeIn(1000);
+			}
+		}
+        spectatingIdentifier = identifier;
+        displaySpectatorOverlay();
+	}
+}
+
+async function stopSpectate() {
+    if (spectatingIdentifier != null) {
+		if(!IsScreenFadedOut() && !IsScreenFadingOut()) {
+			DoScreenFadeOut(1000);
+			while (!IsScreenFadedOut()) {
+				await Utils.delay(0);
+			}
+
+			var target = GetPlayerPed(spectatingIdentifier);
+
+			var [targetX, targetY, targetZ] = GetEntityCoords(GetPlayerPed(-1), false);
+
+			RequestCollisionAtCoord(targetX, targetY, targetZ);
+			NetworkSetInSpectatorMode(false, spectatingIdentifier);
+
+			if(IsScreenFadedOut()) {
+				DoScreenFadeIn(1000);
+			}
+		}
+        spectatingIdentifier = null;
+        messageScaleform.ready = false;
+        messageScaleform.scaleform = null;
+	}
+}
+
+function changeTime(time) {
+    var times = time.split(':');
+
+    if (times.length == 2) {
+        NetworkOverrideClockTime(parseInt(times[0],10), parseInt(times[1],10), 0);
+    } else if (times.length >= 3) {
+        NetworkOverrideClockTime(parseInt(times[0],10), parseInt(times[1],10), parseInt(times[2],10));
+    }
+}
+
+async function changeWeather(weather) {
+    SetWeatherTypeOverTime(weather, 15.0);
+    Utils.delay(15000);
+    ClearOverrideWeather();
+    ClearWeatherTypePersist();
+    SetWeatherTypePersist(weather);
+    SetWeatherTypeNow(weather);
+    SetWeatherTypeNowPersist(weather);
 }
 
 setTick(() => {
@@ -349,7 +432,7 @@ setTick(() => {
                 }
             } else if (objective.type == "vehicle") {
 
-                if (GetVehiclePedIsIn(GetPlayerPed(-1), false) == objective.objectId && !objective.collected && objectiveHeld == null && !IsEntityDead(GetPlayerPed(-1))) {
+                if (GetVehiclePedIsIn(GetPlayerPed(-1), false) == NetToVeh(objective.objectId) && !objective.collected && objectiveHeld == null && !IsEntityDead(GetPlayerPed(-1))) {
                     objective.collected = true;
                     objectives[objective.identifier] = objective;
                     objectiveHeld = objective.identifier;
@@ -370,9 +453,9 @@ setTick(() => {
                         }
                     }
 
-                    if (GetVehiclePedIsIn(GetPlayerPed(-1), false) != objective.objectId) {
-                        var [playerX, playerY, playerZ] = GetEntityCoords(objective.objectId);
-                        var heading = GetEntityHeading(objective.objectId);
+                    if (GetVehiclePedIsIn(GetPlayerPed(-1), false) != NetToVeh(objective.objectId)) {
+                        var [playerX, playerY, playerZ] = GetEntityCoords(NetToEnt(objective.objectId));
+                        var heading = GetEntityHeading(NetToEnt(objective.objectId));
                         var objective = objectives[objectiveHeld];
                         TriggerServerEvent('infinity:objectiveDropped', objectiveHeld, { x: playerX, y: playerY - 1.0, z: playerZ, heading: heading });
                         objectiveHeld = null;
@@ -395,11 +478,81 @@ setTick(() => {
                         }
                     }
                 }
+            } else if (objective.type == "ped") {
+                var [playerX, playerY, playerZ] = GetEntityCoords(GetPlayerPed(-1));
+                var [pedX, pedY, pedZ] = GetEntityCoords(NetToPed(objective.objectId));
+                var distance = Vdist(playerX, playerY, playerZ, pedX, pedY, pedZ);
+
+                if (objectiveHeld != objective.identifier && distance <= 2 && !objective.collected) {
+                    var text = "Press 'E' to order follow";
+                    drawString(0.5, 0.9, 0.0062 * text.length, 0.05, 0.8, text, 255, 255, 255, 255);
+
+                    if (IsControlJustReleased( 1, 38 ) && !IsPauseMenuActive()){
+                        objective.collected = true;
+                        objectives[objective.identifier] = objective;
+                        objectiveHeld = objective.identifier;
+                        TriggerServerEvent('infinity:objectiveCollected', objective.identifier);
+                    }
+
+                } else if (objectiveHeld == objective.identifier && distance > 2) {
+                    TriggerServerEvent('infinity:taskGoTo', objective.objectId, { x: playerX, y: playerY, z: playerZ });
+                } else if (objectiveHeld == objective.identifier && distance <= 2) {
+                    var text = "Press 'E' to order stop";
+                    drawString(0.5, 0.9, 0.0062 * text.length, 0.05, 0.8, text, 255, 255, 255, 255);
+
+                    if (IsControlJustReleased( 1, 38 ) && !IsPauseMenuActive()){
+                        objective.collected = false;
+                        objectives[objective.identifier] = objective;
+                        TriggerServerEvent('infinity:objectiveDropped', objectiveHeld, { x: pedX, y: pedY - 1.0, z: pedZ, heading: 0.0 });
+                        objectiveHeld = null;
+                    }
+                }
+
+                if (objectiveHeld == objective.identifier) {
+
+                    if (IsEntityDead(GetPlayerPed(-1))) {
+                        objective.collected = false;
+                        objectives[objective.identifier] = objective;
+                        TriggerServerEvent('infinity:objectiveDropped', objectiveHeld, { x: pedX, y: pedY - 1.0, z: pedZ, heading: 0.0 });
+                        objectiveHeld = null;
+                    }
+
+                    if (objective.destinationMarker != null && objective.destinations.length > 0 && objective.collected && !objective.complete) {
+                        for (var i = 0; i < objective.destinations.length; i++) {
+                            var destination = objective.destinations[i];
+
+                            if (destination.team == currentTeam) {
+                                DrawMarker(objective.destinationMarker.type, destination.x, destination.y, destination.z - 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                    objective.destinationMarker.scale, objective.destinationMarker.scale, objective.destinationMarker.scale, objective.destinationMarker.color.red, objective.destinationMarker.color.green,
+                                    objective.destinationMarker.color.blue, 255, false, true, 2, true, false, false, false);
+                                break;
+                            }
+                        }
+                    }
+
+
+                    for (var i = 0; i < objective.destinations.length; i++) {
+                        var destination = objective.destinations[i];
+
+                        if (destination.team == currentTeam) {
+                            var distance = Vdist(pedX, pedY, pedZ, destination.x, destination.y, destination.z);
+
+                            if (distance <= 2) {
+                                objective.complete = true;
+                                objectives[objective.identifier] = objective;
+                                TriggerServerEvent('infinity:objectiveComplete', objective.identifier);
+                                objectiveHeld = null;
+                            }
+                            break;
+                        }
+                    }
+
+                }
             }
         }
     }
 
-    if (gameState == "lobby" || gameState == "end") {
+    if (gameState == "lobby" || gameState == "end" || gameState == "countdown") {
         DisableControlAction(0, 30, true);
         DisableControlAction(0, 31, true);
 		DisableControlAction(0, 32, true);
@@ -408,7 +561,7 @@ setTick(() => {
         DisableControlAction(0, 35, true);
     }
 
-    if (gameState == "lobby" || gameState == "preparing" || gameState == "ready" || gameState == "end") {
+    if (gameState == "lobby" || gameState == "preparing" || gameState == "ready" || gameState == "end" || gameState == "countdown") {
 		DisableControlAction(0, 24, true);
         DisableControlAction(0, 25, true);
         DisableControlAction(0, 50, true);
@@ -507,6 +660,39 @@ setTick(() => {
             exports.spawnmanager.spawnPlayer();
             messageScaleform.ready = false;
             messageScaleform.scaleform = null;
+        }
+    }
+
+    if (spectatorButtonEnabled) {
+        if (IsControlJustReleased( 1, 288 ) && !IsPauseMenuActive()){
+            spectatorButtonEnabled = false;
+            messageScaleform.ready = false;
+            messageScaleform.scaleform = null;
+
+            for (var i = 0; i < 32; i++) {
+                if(NetworkIsPlayerActive(i)) {
+                    spectatePlayer(i);
+                    break;
+                }
+            }
+        }
+    }
+
+    if (spectatingIdentifier != null) {
+        if (IsControlJustReleased( 1, 175 ) && !IsPauseMenuActive()){
+            for (var i = spectatingIdentifier + 1; i < 32 * 2; i++) {
+                if(NetworkIsPlayerActive(i % 32)) {
+                    spectatePlayer(i % 32);
+                    break;
+                }
+            }
+        } else if (IsControlJustReleased( 1, 174 ) && !IsPauseMenuActive()) {
+            for (var i = spectatingIdentifier - 1 + 32; i >= 0; i--) {
+                if(NetworkIsPlayerActive(i % 32)) {
+                    spectatePlayer(i % 32);
+                    break;
+                }
+            }
         }
     }
 });
