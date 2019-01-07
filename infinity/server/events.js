@@ -392,8 +392,11 @@ RegisterNetEvent('infinity:isDead');
 onNet('infinity:isDead', function(objectId, dead, exist, identifier){
     var objective = objectives[identifier];
 
-    if (!exist) {
-        objective.create(true);
+    if (objective != null && !exist) {
+        objective.destroy = true;
+        setTimeout(function () {
+            objective.create(true);
+        }, 100);
     } else if (objective != null && dead) {
         objective.destroy = true;
         var destroyEvents = events.filter(e => e.on == 'destroy' && e.type == "objective" && e.data == objective.identifier);

@@ -332,12 +332,13 @@ class Objective {
             return;
         }
         this.checkThread = true;
+        await Utils.delay(1000);
         while (this != null && !this.destroy) {
-            await Utils.delay(1000);
-
             var host = GetHostId();
 
             TriggerClientEvent('infinity:checkAlive', host, this.objectId, this.identifier);
+
+            await Utils.delay(1000);
         }
         this.checkThread = false;
     }
