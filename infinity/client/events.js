@@ -118,7 +118,8 @@ on("getMapDirectives", function(add) {
             autoFill: false,
             spectator: false,
             weather: null,
-            time: null
+            time: null,
+            visibleOnMap: false
         };
     });
 
@@ -141,7 +142,8 @@ on("getMapDirectives", function(add) {
             autoFill: false,
             spectator: false,
             weather: null,
-            time: null
+            time: null,
+            visibleOnMap: false
         };
     });
 });
@@ -228,6 +230,8 @@ on('infinity:spawnToHeadQuarter', function(pos) {
                     delay: rule.options.delay ? rule.options.delay * 1000 : 0,
                     button: rule.options.button ? rule.options.button : -1
                 };
+            } else if (rule.options.name == 'visibleOnMap') {
+                gameConfig.visibleOnMap = true;
             }
         }
     }

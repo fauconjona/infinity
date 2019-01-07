@@ -17,7 +17,6 @@ setGameConfig 'minPlayer' { value = 2 }
 setGameConfig 'minPlayerReady' { value = 2 }
 setGameConfig 'forceStart' { value = 60 } --secondes
 setGameConfig 'gameStartDelay' { value = 10 } --secondes
-setGameConfig 'canJoinDuringGame' { value = false }
 
 addTeamRule 'teamA' { name = 'disableWanted' }
 addTeamRule 'teamB' { name = 'disableWanted' }

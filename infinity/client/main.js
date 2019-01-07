@@ -8,6 +8,7 @@ var objectiveBlips = [];
 var objectiveCollecting = null;
 var objectiveTimeleft = 0;
 var objectiveCapturing = null;
+var playerBlips = [];
 var rules = [];
 var currentTeam = null;
 var hqPos = null;
@@ -30,7 +31,8 @@ var gameConfig = {
     autoFill: false,
     spectator: false,
     weather: null,
-    time: null
+    time: null,
+    visibleOnMap: false
 };
 
 var respawnButtonEnabled = false;
@@ -77,7 +79,8 @@ function resetInfinity() {
         autoFill: false,
         spectator: false,
         weather: null,
-        time: null
+        time: null,
+        visibleOnMap: false
     };
 
     respawnButtonEnabled = false;
@@ -633,6 +636,9 @@ setTick(() => {
                 var distance = Vdist(coords[0], coords[1], coords[2], classMenu.x, classMenu.y, classMenu.z);
 
                 if (distance <= classMenu.radius) {
+                    SetTextComponentFormat("STRING");
+                    AddTextComponentString("Press ~INPUT_PICKUP~ to open menu");
+                    DisplayHelpTextFromStringLabel(0, 0, 1, -1);
                     if (IsControlJustReleased( 1, 38 ) && !IsPauseMenuActive()){
                         openClassMenu({x: classMenu.x, y: classMenu.y, z: classMenu.z}, classMenu.radius);
                     }
@@ -647,11 +653,69 @@ setTick(() => {
                 displayScore(globalScore);
             }
         }
+
+        DecorRegister("visibleOnMap", 2);
+        DecorRegisterLock();
+
+        for (var i = 0; i < 32; i++) {
+            if(NetworkIsPlayerActive(i)) {
+                var display;
+                if (!DecorExistOn(GetPlayerPed(-1), "visibleOnMap")) {
+                    display = false;
+                } else {
+                    display = DecorGetBool(GetPlayerPed(i), "visibleOnMap");
+                }
+
+                if (display) {
+                    var blipInfo = playerBlips[i];
+
+                    if (blipInfo == null) {
+                        var blip = AddBlipForEntity(GetPlayerPed(i));
+                        SetBlipSprite(blip, 1);
+                        SetBlipColour(blip, 0);
+                        SetBlipNameToPlayerName(blip, i);
+                        playerBlips[i] = {
+                            identifier: i,
+                            blip: blip
+                        };
+                    } else if (IsEntityDead(GetPlayerPed(i))) {
+                        RemoveBlip(blipInfo.blip);
+                        playerBlips[i] = null;
+                    }
+                } else {
+                    var blipInfo = playerBlips[i];
+
+                    if (blipInfo != null) {
+                        RemoveBlip(blipInfo.blip);
+                        playerBlips[i] = null;
+                    }
+                }
+            }
+        }
+
+        for (var i in playerBlips) {
+            var blipInfo = playerBlips[i];
+
+            if (blipInfo != null && !NetworkIsPlayerActive(blipInfo.identifier)) {
+                RemoveBlip(blipInfo.blip);
+                playerBlips[i] = null;
+            }
+        }
     }
 
     if (gameConfig.disableWanted && GetPlayerWantedLevel(PlayerId()) != 0) {
         SetPlayerWantedLevel(PlayerId(), 0, false);
         SetPlayerWantedLevelNow(PlayerId(), false);
+    }
+
+    if (gameConfig.visibleOnMap) {
+        DecorRegister("visibleOnMap", 2);
+        DecorRegisterLock();
+        DecorSetBool(GetPlayerPed(-1), "visibleOnMap", true);
+    } else {
+        DecorRegister("visibleOnMap", 2);
+        DecorRegisterLock();
+        DecorSetBool(GetPlayerPed(-1), "visibleOnMap", false);
     }
 
     if (messageScaleform.ready) {

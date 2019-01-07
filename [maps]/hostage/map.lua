@@ -17,7 +17,6 @@ setGameConfig 'minPlayer' { value = 2 }
 setGameConfig 'minPlayerReady' { value = 2 }
 setGameConfig 'forceStart' { value = 60 } --secondes
 setGameConfig 'gameStartDelay' { value = 10 } --secondes
-setGameConfig 'canJoinDuringGame' { value = false }
 setGameConfig 'spectator' { value = true }
 setGameConfig 'weather' { value = "EXTRASUNNY" }
 setGameConfig 'time' { value = "12:00" }

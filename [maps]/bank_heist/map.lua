@@ -17,7 +17,6 @@ setGameConfig 'minPlayer' { value = 2 }
 setGameConfig 'minPlayerReady' { value = 2 }
 setGameConfig 'forceStart' { value = 180 } --secondes
 setGameConfig 'gameStartDelay' { value = 10 } --secondes
-setGameConfig 'canJoinDuringGame' { value = false }
 setGameConfig 'spectator' { value = true }
 
 addTeamRule 'police' { name = 'disableWanted' }
@@ -40,6 +39,7 @@ addObjectiveDestinationMarker 'bank' { type = 1, scale = 6.0, color = { red = 0,
 addObjectiveEvent 'bank' { on = 'collect', trigger = 'win', target = 'police' }
 addObjectiveEvent 'bank' { on = 'complete', trigger = 'win', target = 'robbers' }
 addObjectiveEvent 'bank' { on = 'collect', trigger = 'setRule', target = 'robbers', params = { name = "disableWanted", value = false } }
+addObjectiveEvent 'bank' { on = 'collect', trigger = 'setRule', target = 'robbers', params = { name = "visibleOnMap", value = true } }
 addObjectiveEvent 'bank' { on = 'collect', trigger = 'setWanted', target = 'robbers', params = { level = 4 } }
 addObjectiveEvent 'bank' { on = 'collect', trigger = 'displayMessage', target = 'robbers', params = { text = 'Go to the extraction point', time = 10 } }
 addObjectiveEvent 'bank' { on = 'collect', trigger = 'notification', target = 'any', params = { text = '%playerName% has stolen the vault' } }
