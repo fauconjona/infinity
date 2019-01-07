@@ -19,7 +19,8 @@ You only need to start the mapLoader. So, just add this in the server.cfg:
 
 # Planned
 
-
- - Add AI Possibilities
  - Add a wiki for maps
- - Spectator
+
+# Possible problems
+
+ - AI can depop if the host is spectating a player far away

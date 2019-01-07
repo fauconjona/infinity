@@ -219,6 +219,10 @@ onNet('infinity:playerConnected', function(){
         emitNet('infinity:teamsReceived', identifier, teamsLite);
     }
 
+    var playerName = GetPlayerName(identifier);
+
+    TriggerClientEvent('infinity:showNotification', -1, playerName + " ~r~connected");
+
 });
 
 RegisterNetEvent('baseevents:onPlayerKilled');
@@ -231,7 +235,7 @@ onNet('baseevents:onPlayerKilled', function(killerId, infos){
     }
 
     if (killer != null) {
-        TriggerClientEvent('chatMessage', -1, 'Server', [ 255, 255, 255 ], killer.name + " killed " + playerKilled.name);
+        TriggerClientEvent('infinity:showNotification', -1, killer.name + " ~r~killed~w~ " + playerKilled.name);
 
         if (killer.team != playerKilled.team || gameConfig.noTeam) {
             var killEvents = events.filter(e => e.on == 'kill');
@@ -252,6 +256,8 @@ onNet('baseevents:onPlayerKilled', function(killerId, infos){
                 }
             }
         }
+    } else {
+        TriggerClientEvent('infinity:showNotification', -1, playerKilled.name + " ~r~died");
     }
 });
 
@@ -261,6 +267,7 @@ onNet('baseevents:onPlayerDied', function(killerType, pos){
 
     if (playerKilled != null) {
         playerKilled.killed();
+        TriggerClientEvent('infinity:showNotification', -1, playerKilled.name + " ~r~died");
     }
 });
 
@@ -277,7 +284,7 @@ onNet('infinity:teamChanged', function(teamIdentifier){
     if (player) {
         player.setTeam(teamIdentifier);
     } else {
-        addPlayer(source, teamIdentifier);
+        player = addPlayer(source, teamIdentifier);
     }
 
     emitNet('infinity:spawnToHeadQuarter', source, team.HQ);
@@ -293,9 +300,10 @@ onNet('infinity:teamChanged', function(teamIdentifier){
     emitNet('infinity:teamUpdate', -1, teamIdentifier, teamLite);
 
     if (!timerStarted && gameState == "lobby" && canStartParty()) {
-        console.log("Force start");
         forceStart();
     }
+
+    TriggerClientEvent('infinity:showNotification', -1, player.name + " joined ~g~" + team.name);
 });
 
 RegisterNetEvent('infinity:playerReady');
@@ -304,6 +312,12 @@ onNet('infinity:playerReady', function(ready){
 
     if (player != null) {
         player.ready = ready;
+
+        if (ready) {
+            TriggerClientEvent('infinity:showNotification', -1, player.name + " is ~g~ready");
+        } else {
+            TriggerClientEvent('infinity:showNotification', -1, player.name + " is ~r~not ready");
+        }
     }
 });
 
@@ -402,4 +416,9 @@ onNet('infinity:entityFreeze', function(objectId, freeze){
 RegisterNetEvent('infinity:taskGoTo');
 onNet('infinity:taskGoTo', function(objectId, pos){
     TriggerClientEvent('infinity:taskGoTo', -1, objectId, pos);
+});
+
+RegisterNetEvent('infinity:showNotification');
+onNet('infinity:showNotification', function(text){
+    TriggerClientEvent('infinity:showNotification', -1, text);
 });

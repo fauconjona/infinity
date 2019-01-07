@@ -39,4 +39,16 @@ class Utils {
     static error(txt) {
         console.log("^1[Infinity]" + txt + "^7");
     }
+
+    static replaceKeys(text, player, team) {
+        if (player != null) {
+            text = text.replace('%playerName%', player.name);
+        }
+
+        if (team != null) {
+            text = text.replace('%teamName', team.name);
+        }
+
+        return text;
+    }
 }

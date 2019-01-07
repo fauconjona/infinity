@@ -153,9 +153,9 @@ class Objective {
 
         for (var i = 0; i < collectEvents.length; i++) {
             if (collectEvents[i].target == "player") {
-                collectEvents[i].triggered(player);
+                collectEvents[i].triggered(player, player);
             } else {
-                collectEvents[i].triggered(null);
+                collectEvents[i].triggered(null, player);
             }
         }
 

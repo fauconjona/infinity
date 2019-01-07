@@ -108,14 +108,49 @@ async function displayCountdown(timer) {
 }
 
 async function displaySpectatorOverlay() {
-    var scaleform = RequestScaleformMovie('mp_spectator_overlay');
+    var scaleform = RequestScaleformMovie("instructional_buttons");
 
     while (!HasScaleformMovieLoaded(scaleform)) {
         await Utils.delay(0);
     }
 
-    messageScaleform.scaleform = scaleform;
+    PushScaleformMovieFunction(scaleform, "CLEAR_ALL");
+    PopScaleformMovieFunctionVoid();
+
+    PushScaleformMovieFunction(scaleform, "SET_CLEAR_SPACE");
+    PushScaleformMovieFunctionParameterInt(200);
+    PopScaleformMovieFunctionVoid();
+
+    PushScaleformMovieFunction(scaleform, "SET_DATA_SLOT");
+    PushScaleformMovieFunctionParameterInt(0);
+    getButton(GetControlInstructionalButton(2, 175, true));
+    scaleformAddButton("Next");
+    PopScaleformMovieFunctionVoid();
+
+    PushScaleformMovieFunction(scaleform, "SET_DATA_SLOT");
+    PushScaleformMovieFunctionParameterInt(1);
+    getButton(GetControlInstructionalButton(2, 174, true));
+    scaleformAddButton("Previous");
+    PopScaleformMovieFunctionVoid();
+
+    PushScaleformMovieFunction(scaleform, "DRAW_INSTRUCTIONAL_BUTTONS");
+    PopScaleformMovieFunctionVoid();
+
+    PushScaleformMovieFunction(scaleform, "SET_BACKGROUND_COLOUR");
+    PushScaleformMovieFunctionParameterInt(0);
+    PushScaleformMovieFunctionParameterInt(0);
+    PushScaleformMovieFunctionParameterInt(0);
+    PushScaleformMovieFunctionParameterInt(80);
+    PopScaleformMovieFunctionVoid();
+
     messageScaleform.ready = true;
+    messageScaleform.scaleform = scaleform;
+}
+
+function showNotification(text) {
+    SetNotificationTextEntry('STRING');
+	AddTextComponentSubstringWebsite(text);
+	DrawNotification(false, true);
 }
 
 function scoreToString(score) {

@@ -271,6 +271,9 @@ async function startCollecting(objective) {
 
 async function spectatePlayer(identifier) {
     closeMenu();
+    if (spectatingIdentifier == null) {
+        TriggerServerEvent('infinity:showNotification', GetPlayerName(PlayerId()) + " start spectating");
+    }
     if (spectatingIdentifier == null || spectatingIdentifier != identifier) {
 		if(!IsScreenFadedOut() && !IsScreenFadingOut()) {
 			DoScreenFadeOut(1000);
@@ -296,6 +299,7 @@ async function spectatePlayer(identifier) {
 
 async function stopSpectate() {
     if (spectatingIdentifier != null) {
+        TriggerServerEvent('infinity:showNotification', GetPlayerName(PlayerId()) + " stop spectating");
 		if(!IsScreenFadedOut() && !IsScreenFadingOut()) {
 			DoScreenFadeOut(1000);
 			while (!IsScreenFadedOut()) {

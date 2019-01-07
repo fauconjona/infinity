@@ -18,6 +18,7 @@ setGameConfig 'minPlayerReady' { value = 2 }
 setGameConfig 'forceStart' { value = 180 } --secondes
 setGameConfig 'gameStartDelay' { value = 10 } --secondes
 setGameConfig 'canJoinDuringGame' { value = false }
+setGameConfig 'spectator' { value = true }
 
 addTeamRule 'police' { name = 'disableWanted' }
 addTeamRule 'robbers' { name = 'disableWanted' }
@@ -41,6 +42,7 @@ addObjectiveEvent 'bank' { on = 'complete', trigger = 'win', target = 'robbers' 
 addObjectiveEvent 'bank' { on = 'collect', trigger = 'setRule', target = 'robbers', params = { name = "disableWanted", value = false } }
 addObjectiveEvent 'bank' { on = 'collect', trigger = 'setWanted', target = 'robbers', params = { level = 4 } }
 addObjectiveEvent 'bank' { on = 'collect', trigger = 'displayMessage', target = 'robbers', params = { text = 'Go to the extraction point', time = 10 } }
+addObjectiveEvent 'bank' { on = 'collect', trigger = 'notification', target = 'any', params = { text = '%playerName% has stolen the vault' } }
 addObjectiveEvent 'bank' { on = 'collect', trigger = 'createVehicle', target = 'robbers', params = { model = 'Burrito2', pos = { x = 257.76, y = 277.62, z = 105.76, heading = 67.7 } } }
 
 addTeamEvent 'police' { on = 'allTeamDead', trigger = 'lose' }
@@ -51,7 +53,7 @@ addEvent 'any' { on = "partyStarted", trigger = 'createVehicle', params = { mode
 addEvent 'any' { on = "partyStarted", trigger = 'createVehicle', params = { model = 'Police3', pos = { x = 422.71, y = -1028.52, z = 29.07, heading = 80 } }  }
 addEvent 'any' { on = "partyStarted", trigger = 'createVehicle', params = { model = 'Police3', pos = { x = 432.32, y = -1026.59, z = 28.9, heading = 80 } }  }
 
-addEvent 'robbers' { on = "partyStarted", trigger = 'displayMessage', params = { text = 'Capture the cash in the bank', time = 10 } }
+addEvent 'robbers' { on = "partyStarted", trigger = 'displayMessage', params = { text = 'Capture the cash in the vault', time = 10 } }
 addEvent 'police' { on = "partyStarted", trigger = 'displayMessage', params = { text = 'Robbery in progress', time = 10 } }
 
 --Classes

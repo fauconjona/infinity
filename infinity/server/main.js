@@ -97,7 +97,7 @@ function forceStart() {
 }
 
 function startParty(ms) {
-    TriggerClientEvent('chatMessage', -1, 'Server', [ 255, 0, 0 ], "Party start in " + Math.round(ms / 1000) + "sec");
+    TriggerClientEvent('infinity:showNotification', -1, "Party start in ~r~" + Math.round(ms / 1000) + "~w~ sec");
 
     setTimeout(function () {
         for (i in players) {
@@ -122,10 +122,6 @@ function startParty(ms) {
 
 function teamWin(teamIdentifier) {
     gameState = "end";
-
-    console.log(teamIdentifier);
-    console.log(teams[teamIdentifier]);
-    console.log(players[teamIdentifier]);
 
     if (teams[teamIdentifier] != null) {
         var team = teams[teamIdentifier];

@@ -239,7 +239,7 @@ on('infinity:spawnToHeadQuarter', function(pos) {
     if (gameConfig.time != null) {
         changeTime(gameConfig.time);
     }
-    
+
     if (gameConfig.weather != null) {
         changeWeather(gameConfig.weather);
     }
@@ -589,4 +589,9 @@ on('infinity:startSpectating', function() {
 RegisterNetEvent('infinity:stopSpectating');
 on('infinity:stopSpectating', function() {
     stopSpectate();
+});
+
+RegisterNetEvent('infinity:showNotification');
+on('infinity:showNotification', function(text) {
+    showNotification(text);
 });

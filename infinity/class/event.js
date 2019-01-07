@@ -45,7 +45,7 @@ class Event {
         }
     }
 
-    triggered(player) {
+    triggered(player, by) {
         switch (this.trigger) {
             case 'win':
                 if (player != null && (this.target == "player" || gameConfig.noTeam)) {
@@ -193,18 +193,32 @@ class Event {
                 } else if (player == null && this.params != null && this.params.text != null && this.params.time != null) {
                     var team = teams[this.target];
                     if (team != null) {
-                        var playerToRevive = players.filter(p => (p != null && p.team == team.identifier));
-                        for (var identifier in playerToRevive) {
-                            var p = playerToRevive[identifier];
+                        var playerToDisplay = players.filter(p => (p != null && p.team == team.identifier));
+                        for (var identifier in playerToDisplay) {
+                            var p = playerToDisplay[identifier];
                             TriggerClientEvent('infinity:displayMessage', p.identifier, this.params.text, this.params.time);
                         }
                     } else if (this.target == "any") {
-                        for (var identifier in players) {
-                            var p = players[identifier];
-                            if (p != null) {
-                                TriggerClientEvent('infinity:displayMessage', p.identifier, this.params.text, this.params.time);
-                            }
+                        TriggerClientEvent('infinity:displayMessage', -1, this.params.text, this.params.time);
+                    }
+                }
+                break;
+            case 'notification':
+                if (this.params != null && this.params.text != null) {
+                    var text = Utils.replaceKeys(this.params.text, by, by != null ? teams[by.team] : null);
+
+                    if (player != null && this.target == "player") {
+                        TriggerClientEvent('infinity:showNotification', player.identifier, text);
+                    } else if (teams[this.target] != null) {
+                        var team = teams[this.target];
+                        var playerToDisplay = players.filter(p => (p != null && p.team == team.identifier));
+                        for (var identifier in playerToDisplay) {
+                            var p = playerToDisplay[identifier];
+                            var text = Utils.replaceKeys(text, p, team);
+                            TriggerClientEvent('infinity:showNotification', p.identifier, text);
                         }
+                    } else if (this.target == "any") {
+                        TriggerClientEvent('infinity:showNotification', -1, text);
                     }
                 }
                 break;
