@@ -3,5 +3,7 @@ var maps = [
     "coveted",
     "ffa",
     "koth",
-    "teamdeathmatch"
+    "teamdeathmatch",
+    "hostage",
+    "elimination"
 ];
